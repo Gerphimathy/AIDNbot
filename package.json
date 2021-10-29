@@ -1,0 +1,22 @@
+{
+  "name": "aidnbot",
+  "version": "1.0.0",
+  "description": "AIDNbot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gerphimathy/AIDNbot.git"
+  },
+  "author": "Math",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Gerphimathy/AIDNbot/issues"
+  },
+  "homepage": "https://github.com/Gerphimathy/AIDNbot#readme",
+  "dependencies": {
+    "discord.js": "^13.3.0"
+  }
+}
