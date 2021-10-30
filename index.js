@@ -37,7 +37,7 @@ client.on("messageCreate", (message) => {
 
 		//Ping with latency
 		case `${config.prefix}ping`:
-			message.channel.send('🏓 Pong ! **' + (message.createdTimestamp - Date.now()) + 'ms **');
+			message.channel.send('🏓 Pong ! **' + (Date.now()- message.createdTimestamp) + 'ms **');
 			break;
 
 		case `${config.prefix}throw`:
