@@ -19,6 +19,24 @@ client.once('ready', () => {
 
 	});
 
+
+
+var mysql = require('mysql');
+
+var db = mysql.createConnection({
+  host: config.mySQLhost,
+  user: config.mySQLuser,
+  password: config.mySQLpass,
+  database: config.mySQLdatabase
+});
+
+db.connect(function(err) {
+  if (err) throw err;
+  else console.log("Connected!");
+});
+
+
+
 //Event listener on messages sent
 
 client.on("messageCreate", (message) => {
