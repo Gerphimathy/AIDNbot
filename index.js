@@ -36,7 +36,6 @@ db.connect(function(err) {
   else console.log("Connected!");
 });
 
-
 //Event listener on messages sent
 
 client.on("messageCreate", (message) => {
@@ -128,7 +127,7 @@ client.on("messageCreate", (message) => {
 							break;
 
 						case 's':
-							totalTime += 60 * inputTime;
+							totalTime += 1000 * inputTime;
 							break;
 
 						default:
@@ -137,7 +136,7 @@ client.on("messageCreate", (message) => {
 				}//End of else
 			}else isMeasure = false;
 		}//End of While
-		let message = args.slice(i, args.length-1).join(' ');//merge to form message
+		let message = args.slice(i, args.length).join(' ');//merge to form message
 		if(i == 0 || i == args.length) messageData.channel.send(
 				"Please send with this format:" +
 				"\n" + `${config.prefix}` + "reminder **Have Atleast one of these**: [xd, yh, xm, ws] [message]." +
@@ -147,18 +146,27 @@ client.on("messageCreate", (message) => {
 		else if (totalTime > 1000*3600*24*30) messageData.channel.send("You cannoy set a reminder due in more than a month.");
 		else if (totalTime == 0) messageData.channel.send("...Really Now ?");
 		else{
-			let timeStamp = messageData.createdTimestamp + totalTime;
+
+			let timestamp = messageData.createdTimestamp + totalTime;
+
 			let timeSeconds = totalTime/1000;
-			let days = Math.floor(totalTime/(3600*24));
+
+			let days = Math.floor(timeSeconds/(3600*24));
+
 			timeSeconds = timeSeconds%(3600*24);
-			let hours = Math.floor(totalTime/3600);
+
+			let hours = Math.floor(timeSeconds/3600);
+
 			timeSeconds = timeSeconds%3600;
-			let minutes = Math.floor(totalTime/60);
+
+			let minutes = Math.floor(timeSeconds/60);
+			
 			let seconds = timeSeconds%60;
+
 			messageData.channel.send(`Got it, I'll remind you of:\n**${message}**\nIn ${days} days, ${hours} hours, ${minutes} minutes and ${seconds} seconds.`);
+
 			//toDO:
 			//register reminder in database
 			//remind user
-			//correct time display of the message above
 		}
 	}//End of addReminder function
