@@ -147,7 +147,7 @@ client.on("messageCreate", (message) => {
 		else if (totalTime == 0) messageData.channel.send("...Really Now ?");
 		else{
 
-			let timestamp = messageData.createdTimestamp + totalTime;
+			let remindTime =new Date(messageData.createdTimestamp + totalTime).toISOString().replace('T',' ').split('.')[0];
 
 			let timeSeconds = totalTime/1000;
 
@@ -163,10 +163,19 @@ client.on("messageCreate", (message) => {
 			
 			let seconds = timeSeconds%60;
 
-			messageData.channel.send(`Got it, I'll remind you of:\n**${message}**\nIn ${days} days, ${hours} hours, ${minutes} minutes and ${seconds} seconds.`);
+			var query = `INSERT INTO reminders(userID, remindTime, message)`+
+			` VALUES('${messageData.author.id}','${remindTime}','${message}')`;
 
-			//toDO:
-			//register reminder in database
-			//remind user
+			db.query(query, function(err, result){
+
+				if (err){
+					throw err;
+					messageData.channel.send("Error when trying to access the database.\nPlease check the console.");
+				}else{
+					messageData.channel.send(`Got it, I'll remind you of:\n**${message}**\nIn ${days} days, ${hours} hours, ${minutes} minutes and ${seconds} seconds.`);
+				}
+			});
+			//TODO: Function that checks database on startup/When a ne reminder is added
+			//And puts that reminder in memory
 		}
 	}//End of addReminder function
