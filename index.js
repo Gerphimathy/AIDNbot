@@ -182,8 +182,10 @@ client.on("messageCreate", (message) => {
 			
 			let seconds = timeSeconds%60;
 
+			var neutralizedMessage = neutralizeCharacters(message, ["'", '"']); 
+
 			var query = `INSERT INTO reminders(userID, remindTime, message)`+
-			` VALUES('`+messageData.author.id+`','`+remindTime+`','`+neutralizeCharacters(message, ["'", '"'])+`')`;
+			` VALUES('`+messageData.author.id+`','`+remindTime+`','`+(neutralizedMessage.length > 230 ? neutralizedMessage.substr(0,230) : neutralizedMessage)+`')`;
 
 			db.query(query, function(err, result){
 
