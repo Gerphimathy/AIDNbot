@@ -98,6 +98,20 @@ client.on("messageCreate", (message) => {
 		return Math.floor(Math.random() * (max - min + 1) + min)
 	}
 
+	function neutralizeCharacters(str, characters){
+		for(var i = 0; i < characters.length; i++){
+			if(str.includes(characters[i])) str = str.split(characters[i]).join("%%"+characters[i].charCodeAt(0)+"%%");
+		}
+		return str;
+	}
+
+	function putbackCharacters (str, characters){
+		for (var i =0; i < characters.length; i++){
+			if(str.includes("%%"+characters[i].charCodeAt(0)+"%%")) str = str.split("%%"+characters[i].charCodeAt(0)+"%%").join(characters[i]);
+		}
+		return str;
+	}
+
 //Command Related Functions
 	function addReminder(args, messageData) {
 		let isMeasure = true;
@@ -140,7 +154,8 @@ client.on("messageCreate", (message) => {
 				}//End of else
 			}else isMeasure = false;
 		}//End of While
-		let message = args.slice(i, args.length).join(' ');//merge to form message
+		var message = args.slice(i, args.length).join(' ');//merge to form message
+
 		if(i == 0 || i == args.length) messageData.channel.send(
 				"Please send with this format:" +
 				"\n" + `${config.prefix}` + "reminder **Have Atleast one of these**: [xd, yh, xm, ws] [message]." +
@@ -168,7 +183,7 @@ client.on("messageCreate", (message) => {
 			let seconds = timeSeconds%60;
 
 			var query = `INSERT INTO reminders(userID, remindTime, message)`+
-			` VALUES('${messageData.author.id}','${remindTime}','${message}')`;
+			` VALUES('`+messageData.author.id+`','`+remindTime+`','`+neutralizeCharacters(message, ["'", '"'])+`')`;
 
 			db.query(query, function(err, result){
 
@@ -196,7 +211,7 @@ client.on("messageCreate", (message) => {
 
 					let id = row.id;
 					let userID = row.userID;
-					let message = row.message;
+					let message = putbackCharacters(row.message, ['"', "'"]);
 					let stamp = row.remindTime;
 					let rem = setTimeout(function(){
 						client.users.fetch(userID).then(user =>{user.send(message)});
@@ -211,6 +226,7 @@ client.on("messageCreate", (message) => {
 		});
 	}
 
+
 	function clearReminders(){
 		var query = "SELECT id, userID, message FROM reminders WHERE remindTime <=  NOW()";
 		db.query(query, function(err, result){
@@ -221,7 +237,7 @@ client.on("messageCreate", (message) => {
 
 					let uID = row.userID;
 					let dbid = row.id;
-					let msg = row.message;
+					let msg = putbackCharacters(row.message, ['"',"'"]);
 
 					client.users.fetch(uID).then(user =>{user.send(msg + "\n*This message was delayed due to bot downtime*")});
 					var queryDel = `DELETE FROM reminders WHERE id = ${dbid}`;
