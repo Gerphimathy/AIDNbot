@@ -12,12 +12,8 @@ client.login(config.token);
 
 //Log when bot is online
 
-var activeReminders = [];
-
 client.once('ready', () => {
 
-	clearReminders();
-	loadNextReminder();
 	console.log('It\'s Alive !');
 	console.log(config.prefix);
 
@@ -39,6 +35,9 @@ db.connect(function(err) {
   if (err) throw err;
   else console.log("Connected!");
 });
+
+var reminder;
+loadNextReminder();
 
 //Event listener on messages sent
 
@@ -151,7 +150,7 @@ client.on("messageCreate", (message) => {
 		else if (totalTime == 0) messageData.channel.send("...Really Now ?");
 		else{
 
-			let remindTime = new Date(messageData.createdTimestamp + totalTime).toISOString().replace('T',' ').split('.')[0];
+			let remindTime =new Date(messageData.createdTimestamp + totalTime).toISOString().replace('T',' ').split('.')[0];
 
 			let timeSeconds = totalTime/1000;
 
@@ -185,48 +184,31 @@ client.on("messageCreate", (message) => {
 	}//End of addReminder function
 
 	function loadNextReminder(){
-		var query = "SELECT id, userID, UNIX_TIMESTAMP(remindTime) as remindTime, message FROM reminders WHERE remindTime > NOW()";
-		db.query(query, function(err, result){
-			if(err) throw err;
-			else{
-				activeReminders.forEach(reminder => clearTimeout(reminder));
-				activeReminders = [];
-				Object.keys(result).forEach(function(key){
-					var row = result[key];
 
-					let id = row.id;
-					let userID = row.userID;
-					let message = row.message;
-					let stamp = row.remindTime;
-					let rem = setTimeout(function(){
-						client.users.fetch(userID).then(user =>{user.send(message)});
-						var query = `DELETE FROM reminders WHERE id = ${id}`;
-						db.query(query, function(err, results) {if (err) throw err;});
-						loadNextReminder;
-					},
-					(stamp*1000 - Date.now()));
-					activeReminders.push(rem);
-				});
-			}
+		var query = "SELECT id, userID, UNIX_TIMESTAMP(remindTime) as remindTime, message FROM reminders WHERE UNIX_TIMESTAMP(remindTime) = (SELECT MIN(UNIX_TIMESTAMP(remindTime))FROM reminders)";
+		var res = {};
+		db.query(query, function(err, result){
+			if(err) t
 		});
+		setReminder(
+
 	}
 
-	function clearReminders(){
-		var query = "SELECT id, userID, message FROM reminders WHERE remindTime <=  NOW()";
-		db.query(query, function(err, result){
-			if (err) throw err;
-			else{
-				Object.keys(result).forEach(function(key) {
-					var row = result[key];
 
-					let uID = row.userID;
-					let dbid = row.id;
-					let msg = row.message;
+	function setReminder(remindData){
+		var  remindData = loadNextReminder();
+		clearTimeout(reminder);
+		if(remindData != null)
+		reminder = setTimeout(triggerReminder(remindData),remindData['remindTime']-Date.now());
+	}
 
-					client.users.fetch(uID).then(user =>{user.send(msg + "\n*This message was delayed due to bot downtime*")});
-					var queryDel = `DELETE FROM reminders WHERE id = ${dbid}`;
-					db.query(queryDel, function  (err, results) {if (err) throw err;});
-				});
-			}
+	function triggerReminder(remindData){
+		client.users.fetch(remindData['userId']).then( user => {
+			user.send(remindData['message'])
 		});
+		var query = `DELETE FROM reminders WHERE id = ${remindData['id']}`;
+		db.query(query, function(err, results){
+			if (err) throw err;
+		});
+		setReminder();
 	}
