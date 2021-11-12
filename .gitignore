@@ -1,4 +1,15 @@
+##Ignore config file containing sensible information
+
 config.json
+
+##Ignore node modules, modules needed can be downloaded using NPM and are detailed in the packages json files.
+
 node_modules
+
+##Ignore temporary linux save files
+
 *.save
-createDBscript.sql
+
+##Ignore IntelliJ idea project files
+
+.idea
