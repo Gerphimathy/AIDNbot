@@ -11,8 +11,6 @@
 
 /** Import Required Files, open discord client, json config and SQL database **/
 
-const config = require("./config.json");
-
 let activeReminders = [];
 //Declare list of active reminders
 
@@ -24,19 +22,27 @@ const client = new Client({
 	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES]
 });
 
-client.login(config.token);
+client.login(process.env.TOKEN);
 
 client.once('ready', () => {
 
 	clearReminders();
 	loadNextReminder();
 	console.log('It\'s Alive !');
-	console.log(config.prefix);
+	console.log(process.env.PREFIX);
 
 	});
 
-
 /** Database connection **/
+const { Pool } = require('pg');
+const db = new Pool({
+	connectionString: process.env.DATABASE_URL,
+	ssl: {
+		rejectUnauthorized: false
+	}
+});
+
+/* Outdated
 const mysql = require('mysql');
 
 const db = mysql.createConnection({
@@ -52,11 +58,14 @@ db.connect(function(err) {
   else console.log("Connected!");
 });
 
+ */
+
+
 /** Event Listener on messages sent, analyzing for commands **/
 
 client.on("messageCreate", (message) => {
 	//break if message is from bot or doesn't start with prefix
-	if (!message.content.startsWith(config.prefix) || message.author.bot) return;
+	if (!message.content.startsWith(process.env.PREFIX) || message.author.bot) return;
 
 	//Breaks down the message down into arguments and the command
 	let command = message.content.split(' ')[0];
@@ -64,28 +73,28 @@ client.on("messageCreate", (message) => {
 
 	//Main switch on commands
 	switch(command){
-		case `${config.prefix}help`:
+		case `${process.env.PREFIX}help`:
 			//To do: Help Guide
 			break;
 
 		//Add Reminder to Reminder Database
-		case `${config.prefix}reminder`:
+		case `${process.env.PREFIX}reminder`:
 			addReminder(args, message);
 			break;
 
 		//Ping with latency
-		case `${config.prefix}ping`:
+		case `${process.env.PREFIX}ping`:
 			message.channel.send('🏓 Pong ! **' + (Date.now()- message.createdTimestamp) + 'ms **');
 			break;
 
-		case `${config.prefix}throw`:
+		case `${process.env.PREFIX}throw`:
 			//Splitting and flooring of the parameters
 			let diceParams = args[0].split('d');
 			diceParams[0] = Math.floor(diceParams[0]);
 			diceParams[1] = Math.floor(diceParams[1]);
 
 			//Checking the arguments
-			if (diceParams.length != 2) message.channel.send("Invalid argument, please send in this format: **"+`${config.prefix}`+"throw xdy**");
+			if (diceParams.length !== 2) message.channel.send("Invalid argument, please send in this format: **"+`${process.env.PREFIX}`+"throw xdy**");
 			else if (diceParams[0] < 1) message.channel.send('Please Send atleast one dice.');
 			else if (diceParams[0] > 10) message.channel.send('10 dies should be more than enough.');
 			else if (diceParams[1] < 2) message.channel.send('You can\'t do probability with only one result.');
@@ -141,7 +150,7 @@ client.on("messageCreate", (message) => {
 		//we loop while the argument is a time measure.
 		while (isMeasure){
 			i++;
-			if (i != args.length) {
+			if (i !== args.length) {
 				let measure = args[i].substr(args[i].length - 1);//get last character of argument
 				let inputTime = parseInt(args[i].substr(0, args[i].length - 1));//get input time
 
@@ -173,24 +182,23 @@ client.on("messageCreate", (message) => {
 				}
 			}else isMeasure = false;
 		}
-		var message = args.slice(i, args.length).join(' ');//merge to form message
+		let message = args.slice(i, args.length).join(' ');//merge to form message
 
 		/** Handling incorrect time measures **/
-		if(i == 0 || i == args.length) messageData.channel.send(
+		if(i === 0 || i === args.length) messageData.channel.send(
 				"Please send with this format:" +
-				"\n" + `${config.prefix}` + "reminder **Have at least one of these**: [xd, yh, xm, ws] [message]." +
-				"\nExample: " + `${config.prefix}` + "reminder 1d 2h remind me !"
+				"\n" + `${process.env.PREFIX}` + "reminder **Have at least one of these**: [xd, yh, xm, ws] [message]." +
+				"\nExample: " + `${process.env.PREFIX}` + "reminder 1d 2h remind me !"
 				);
 		else if (message.length > 230) messageData.channel.send("Your message is too long !\nTry trimming it down to 230 characters.");
 		//Database limit is 250 characters, putting a 230 hard limit to have a margin for sanitizing
 		else if (totalTime > 1000*3600*24*30) messageData.channel.send("You cannot set a reminder due in more than a month.");
 		//Setting a hard limit to avoid issues
-		else if (totalTime == 0) messageData.channel.send("...Really Now ?");
+		else if (totalTime === 0) messageData.channel.send("...Really Now ?");
 		else{
 			/** Handling correct input **/
 
-			let remindTime = new Date(messageData.createdTimestamp + totalTime).toISOString().replace('T',' ').split('.')[0];
-			//Translates remind unix timestamp to SQL datetime: YY-MM-DD h:m:s
+			let remindTime = messageData.createdTimestamp + totalTime;
 
 			/** Parsing input time to duration **/
 
@@ -210,9 +218,9 @@ client.on("messageCreate", (message) => {
 
 			/** Neutralize input arguments to input into database **/
 
-			var neutralizedMessage = neutralizeCharacters(message, ["'", '"']); 
+			let neutralizedMessage = neutralizeCharacters(message, ["'", '"']);
 
-			var query = `INSERT INTO reminders(userID, remindTime, message)`+
+			let query = `INSERT INTO reminders(userID, remindTime, message)`+
 			` VALUES('`+messageData.author.id+`','`+remindTime+`','`+
 				(neutralizedMessage.length > 250 ? neutralizedMessage.substr(0,250) : neutralizedMessage)+`')`;
 
@@ -236,7 +244,7 @@ client.on("messageCreate", (message) => {
 	/** Loads the newest reminder into memory **/
 	function loadNextReminder(){
 		/** Select all upcoming reminders with the lowest time **/
-		var query = "SELECT id, userID, UNIX_TIMESTAMP(remindTime) as remindTime, message FROM reminders WHERE remindTime = (SELECT MIN(remindTime) FROM reminders)";
+		let query = "SELECT id, userID, UNIX_TIMESTAMP(remindTime) as remindTime, message FROM reminders WHERE remindTime = (SELECT MIN(remindTime) FROM reminders)";
 		db.query(query, function(err, result){
 			if(err) throw err;
 			else{
@@ -274,7 +282,7 @@ client.on("messageCreate", (message) => {
 
 	function clearReminders(){
 		/** Load all reminders in the database that have not been sent due to bot downtime **/
-		var query = "SELECT id, userID, message FROM reminders WHERE remindTime <=  NOW()";
+		let query = "SELECT id, userID, message FROM reminders WHERE remindTime <=  NOW()";
 		db.query(query, function(err, result){
 			if (err) throw err;
 			else{
