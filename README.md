@@ -14,7 +14,7 @@ About:
 
 Setup: 
 
-	This bot requires a mysql database to be able to run. You can find the script to create the database in: "createDBscript.sql".
+	This bot requires a mysql database to be able to run. You can find the script to create the database in: "createDB.sql".
 
 
 Config:

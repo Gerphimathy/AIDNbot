@@ -13,3 +13,7 @@ node_modules
 ##Ignore IntelliJ idea project files
 
 .idea
+
+##Ignore heroku environment variables
+
+.env

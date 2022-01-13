@@ -120,14 +120,14 @@ client.on("messageCreate", (message) => {
 	}
 
 	function neutralizeCharacters(str, characters){ //sanitize certain characters from user inputs
-		for(var i = 0; i < characters.length; i++){
+		for(let i = 0; i < characters.length; i++){
 			if(str.includes(characters[i])) str = str.split(characters[i]).join("%%"+characters[i].charCodeAt(0)+"%%");
 		}
 		return str;
 	}
 
 	function putbackCharacters (str, characters){ //puts back sanitized characters when outputing
-		for (var i =0; i < characters.length; i++){
+		for (let i =0; i < characters.length; i++){
 			if(str.includes("%%"+characters[i].charCodeAt(0)+"%%")) str = str.split("%%"+characters[i].charCodeAt(0)+"%%").join(characters[i]);
 		}
 		return str;
@@ -198,7 +198,7 @@ client.on("messageCreate", (message) => {
 		else{
 			/** Handling correct input **/
 
-			let remindTime = messageData.createdTimestamp + totalTime;
+			let remindTime = new Date(messageData.createdTimestamp + totalTime).toISOString();
 
 			/** Parsing input time to duration **/
 
@@ -228,24 +228,20 @@ client.on("messageCreate", (message) => {
 
 			/** Input into reminders **/
 
-			db.query(query, function(err, result){
-
-				if (err){
-					messageData.channel.send("Error when trying to access the database.\nPlease check the console.");
-					throw err;
-				}else{
-					messageData.channel.send(`Got it, I'll remind you of:\n**${message}**\nIn ${days} days, ${hours} hours, ${minutes} minutes and ${seconds} seconds.`);
-				}
-			});
-			loadNextReminder();
+			db.query(query).then(
+				res => loadNextReminder()
+			).catch(
+				err => messageData.channel.send("Error when trying to access the database.\nPlease check the console.")
+			)
+			messageData.channel.send(`Got it, I'll remind you of:\n**${message}**\nIn ${days} days, ${hours} hours, ${minutes} minutes and ${seconds} seconds.`)
 		}
 	}
 
 	/** Loads the newest reminder into memory **/
 	function loadNextReminder(){
 		/** Select all upcoming reminders with the lowest time **/
-		let query = "SELECT id, userID, UNIX_TIMESTAMP(remindTime) as remindTime, message FROM reminders WHERE remindTime = (SELECT MIN(remindTime) FROM reminders)";
-		db.query(query, function(err, result){
+		let query = "SELECT id, userID, remindTime, message FROM reminders WHERE remindTime = (SELECT MIN(remindTime) FROM reminders WHERE remindTime >= NOW())";
+		db.query(query, (err, result) => {
 			if(err) throw err;
 			else{
 
@@ -254,27 +250,29 @@ client.on("messageCreate", (message) => {
 				activeReminders = [];
 
 				/** For each of the loaded reminders **/
-				Object.keys(result).forEach(function(key){
-					var row = result[key];
+				for (let i = 0; i < result.rows.length; i++){
+					let row = result.rows[i];
 
 					let id = row.id;
-					let userID = row.userID;
+					let userid = row.userid;
 					let message = putbackCharacters(row.message, ['"', "'"]); //de sanitize message
-					let stamp = row.remindTime*1000; //mySQL unix time output is in seconds, needs to be converted into milliseconds
+
+
+					let stamp = new Date(row.remindtime);
 
 					/** Reminder Function **/
 					let rem = setTimeout(function(){
 						/** Delete reminder from the database **/
-						client.users.fetch(userID).then(user =>{user.send(message)});
-						var query = `DELETE FROM reminders WHERE id = ${id}`;
-						db.query(query, function(err, results) {if (err) throw err;});
+						client.users.fetch(userid).then(user => user.send(message));
+						let query = "DELETE FROM reminders WHERE id = $1";
+						db.query(query, [id] ,(err, results) => {if (err) throw err;});
 
 						/** Check the next reminder **/
 						loadNextReminder();
 					},
 					(stamp - Date.now()));
 					activeReminders.push(rem);
-				});
+				}
 			}
 		});
 	}
@@ -283,23 +281,23 @@ client.on("messageCreate", (message) => {
 	function clearReminders(){
 		/** Load all reminders in the database that have not been sent due to bot downtime **/
 		let query = "SELECT id, userID, message FROM reminders WHERE remindTime <=  NOW()";
-		db.query(query, function(err, result){
+		db.query(query, (err, result) =>{
 			if (err) throw err;
 			else{
 				/** For each loaded reminder **/
-				Object.keys(result).forEach(function(key) {
-					var row = result[key];
+				for (let i = 0; i < result.rows.length; i++) {
+					let row = result.rows[i];
 
-					let uID = row.userID;
+					let uID = row.userid;
 					let dbid = row.id;
 					let msg = putbackCharacters(row.message, ['"',"'"]);
 
-					client.users.fetch(uID).then(user =>{user.send(msg + "\n*This message was delayed due to bot downtime*")});
+					client.users.fetch(uID).then((user => user.send(msg + "\n*This message was delayed due to bot downtime*")));
 
 					/** Delete from database **/
-					var queryDel = `DELETE FROM reminders WHERE id = ${dbid}`;
-					db.query(queryDel, function  (err, results) {if (err) throw err;});
-				});
+					let queryDel = "DELETE FROM reminders WHERE id = $1";
+					db.query(queryDel, [dbid],(err, results) => {if (err) throw err;});
+				}
 			}
 		});
 	}
