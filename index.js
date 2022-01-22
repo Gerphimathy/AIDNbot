@@ -76,6 +76,10 @@ client.on("messageCreate", (message) => {
 		case `${process.env.PREFIX}help`:
 			//To do: Help Guide
 			break;
+		case `${process.env.PREFIX}admin`:
+			if (isAdmin(message)) message.channel.send("You have administrator privilege");
+			else  message.channel.send("You do not have administrator privilege");
+			break;
 
 		//Add Reminder to Reminder Database
 		case `${process.env.PREFIX}reminder`:
@@ -133,7 +137,11 @@ client.on("messageCreate", (message) => {
 		return str;
 	}
 
-//Command Related Functions
+	function isAdmin(msg) {
+		return msg.member.permissionsIn(msg.channel).has("ADMINISTRATOR");
+	}
+
+//Reminder Related Functions
 
 	/** Add reminder into database **/
 	function addReminder(args, messageData) {
