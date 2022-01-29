@@ -80,6 +80,14 @@ client.on("messageCreate", (message) => {
 			if (isAdmin(message)) message.channel.send("You have administrator privilege");
 			else  message.channel.send("You do not have administrator privilege");
 			break;
+		case `${process.env.PREFIX}isDM`:
+			if (isDM(message.author.id, message.channel.id)) message.channel.send("You are a dm");
+			else  message.channel.send("You are not a dm");
+			break;
+		case `${process.env.PREFIX}makeDM`:
+			if (!isAdmin(message)) message.channel.send("You do not have administrator privilege");
+			else makeDM(message, args);
+			break;
 
 		//Add Reminder to Reminder Database
 		case `${process.env.PREFIX}reminder`:
@@ -116,6 +124,81 @@ client.on("messageCreate", (message) => {
 	}
 
 });
+
+//DND Functions
+
+	function makeDM(message, args){//Make async
+		if (args.length!==0) {
+			let userId = neutralizeCharacters(args[0].slice(3, args[0].length - 1), ["'", '"']);
+			let serverId = message.guild.id;
+
+			checkUser(userId, serverId, function (userExists){
+				if (userExists) {
+					isDM(userId, serverId, function (userDM){
+						if(userDM !== -1){
+							if (userDM) message.channel.send("User is already DM, removing permissions...");
+							else message.channel.send("Adding dm...");
+
+							updateDM(userId, serverId, function (success){
+								if (!success) message.channel.send("Error while trying to access database");
+								else message.channel.send("Updated perms successfully");
+							});
+
+						} else message.channel.send("Error while trying to access database");
+					});
+				} else message.channel.send(`Could not access database`);
+			});
+
+		} else message.channel.send(`Please use the correct format:\n**${process.env.prefix}makeDM @user **`);
+	}
+
+
+	function updateDM(uId, sId, callback){
+		let query = "UPDATE users SET isDm = NOT isDm WHERE discordId = $1 AND serverId = $2";
+		let params = [uId, sId];
+
+		db.query(query, params, err => {
+			if (err) {
+				console.log(err.stack);
+				callback(false);
+			}
+			callback(true);
+		});
+	}
+
+	function checkUser(uId, sId, callback){
+		let searchQuery = "SELECT id, isDm FROM users WHERE discordId = $1 AND serverId = $2";
+		let params = [uId, sId];
+
+		db.query(searchQuery, params, (err, res) => {
+			if(err){
+				console.log(err.stack);
+				callback(false);
+			}
+			if (res.rows.length <= 0) {
+				let insertQuery = "INSERT INTO users(discordId, serverId, isDm) VALUES($1,$2,false)";
+				db.query(insertQuery, params, (err, res)=>{
+					if(err) callback(false);
+					else callback(true);
+				});
+			}else callback(true);
+		});
+	}
+
+	function isDM(uId, sId, callback) {
+
+		let query = "SELECT isDm FROM users WHERE discordId = $1 AND serverId = $2";
+		let params = [uId, sId];
+
+		db.query(query, params, (err, res)=> {
+			if(err) callback(-1);
+			else{
+				if (res.rows.length > 0) callback(res.rows[0].isdm);
+				else callback(-1);
+			}
+		});
+	}
+
 
 //general Utility Functions
 	function randomIntInterval(min, max) { // min and max included
